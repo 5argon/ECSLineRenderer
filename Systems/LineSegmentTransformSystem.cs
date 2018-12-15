@@ -30,10 +30,17 @@ namespace E7.ECS.LineRenderer
             cg = GetComponentGroup(query);
         }
 
+        private float3 cameraPosition;
+        public void RememberCamera(Camera c)
+        {
+            cameraPosition = c.transform.position;
+        }
+
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
             return new LinePositioningJob
             {
+                cameraPosition = cameraPosition,
                 lastSystemVersion = LastSystemVersion,
                 lineSegmentType = GetArchetypeChunkComponentType<LineSegment>(isReadOnly: true),
                 ltwType = GetArchetypeChunkComponentType<LocalToWorld>(isReadOnly: false),
@@ -43,6 +50,7 @@ namespace E7.ECS.LineRenderer
         [BurstCompile]
         struct LinePositioningJob : IJobChunk
         {
+            public float3 cameraPosition;
             public uint lastSystemVersion;
             [ReadOnly] public ArchetypeChunkComponentType<LineSegment> lineSegmentType;
             public ArchetypeChunkComponentType<LocalToWorld> ltwType;
@@ -58,7 +66,7 @@ namespace E7.ECS.LineRenderer
                     var seg = segs[i];
                     var ltw = ltws[i];
 
-                    if (float3.Equals(seg.from, seg.to))
+                    if (float3.Equals(seg.from, seg.to) || float3.Equals(seg.from, cameraPosition))
                     {
                         continue;
                     }
@@ -69,20 +77,22 @@ namespace E7.ECS.LineRenderer
                     float lineLength = math.length(forward);
                     float3 forwardUnit = forward / lineLength;
 
-                    //Find any perpendicular vector of forward because line has no facing
-                    //TODO : proper billboarding
-                    float3 perpendicular = 
-                    forwardUnit.x != 0 ? 
-                    new float3(1, 1, (-forwardUnit.y - forwardUnit.z) / forwardUnit.x) :
-                    forwardUnit.y != 0 ? 
-                    new float3(1, 1, (-forwardUnit.x - forwardUnit.z) / forwardUnit.y) :
-                    forwardUnit.z != 0 ? 
-                    new float3(1, 1, (-forwardUnit.x - forwardUnit.y) / forwardUnit.z) :
-                    float3.zero;
-                    
-                    float3 perpendicularUnit = math.normalize(perpendicular);
+                    // now we use billboarding
 
-                    quaternion rotation = quaternion.LookRotation(forwardUnit, perpendicularUnit);
+                    // //Find any perpendicular vector of forward because line has no facing
+                    // float3 perpendicular = 
+                    // forwardUnit.x != 0 ? 
+                    // new float3(1, 1, (-forwardUnit.y - forwardUnit.z) / forwardUnit.x) :
+                    // forwardUnit.y != 0 ? 
+                    // new float3(1, 1, (-forwardUnit.x - forwardUnit.z) / forwardUnit.y) :
+                    // forwardUnit.z != 0 ? 
+                    // new float3(1, 1, (-forwardUnit.x - forwardUnit.y) / forwardUnit.z) :
+                    // float3.zero;
+                    // float3 perpendicularUnit = math.normalize(perpendicular);
+
+                    float3 toCamera = math.normalize(cameraPosition - seg.from);
+
+                    quaternion rotation = quaternion.LookRotation(forwardUnit, toCamera);
 
                     var mat = math.mul(
                             new float4x4(rotation, seg.from),

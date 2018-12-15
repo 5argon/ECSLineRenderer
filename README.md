@@ -1,12 +1,14 @@
 # ECS LineRenderer
 
+![screenshot](~ss1.png)
+
 Pure ECS approach to render a line. One `Entity` per one line segment.
 
 ## How to use
 
 Create an `Entity` containing `LineSegment : IComponentData` (from-to point information and line width) and `LineStyle : ISharedComponentData`, which holds reference type things like the line's material.
 
-That `Entity` would be attached with `MeshInstanceRenderer` and `LocalToWorld` matrix to enable rendering. That matrix is then will be updated by my systems.
+That `Entity` would be attached with `MeshInstanceRenderer` and `LocalToWorld` matrix to enable rendering by a system. That matrix is then will be also updated according to what you have in `LineSegment`.
 
 ## How to include with GitHub functionality of Unity Package Manager
 
@@ -16,11 +18,13 @@ It does not update automatically when I push fixes to this repo. You must remove
 
 ## Idea
 
-Generate a quat mesh that goes 1 unit in the Z axis. Using `MeshInstanceRenderer` component and the `TransformSystem`, we could use z scale as line length, x scale as line width, position as line from, and rotation as line to. Assuming that this is only one segment of a line.
+Generate a thin rectangle mesh that goes 1 unit in the Z axis. Using `MeshInstanceRenderer` component and the `TransformSystem`, we could use z scale as line length, x scale as line width, position as line from, and rotation as line to. Assuming that this is only one segment of a line.
 
 To construct complex lines, we create more `LineSegment` entity. They should be render instanced as they are using the same mesh. What's left is to wait for `MeshInstanceRendererSystem` to support material property block so we could change line color without a new material.
 
 All lines are rotated to face the main camera in billboard rendering style.
+
+![billboard](~billboard.gif)
 
 ## Info
 
@@ -32,6 +36,7 @@ All lines are rotated to face the main camera in billboard rendering style.
 
 - `LineSegmentRegistrationSystem` : The logic which you create `LineSegment` entity should come before this system.
 - `LineSegmentTransformSystem` : Update your `LineSegment` from-to location before this system's update. It will update `LocalToWorld` matrix.
+- `LineSegmentTransformSystemBootstrap` : Make the main camera give itself to `LineSegmentTrasformSystem`, it need to do the billboard rotation.
 
 ## Limitations
 
@@ -48,5 +53,7 @@ It could not do fancy things that `LineRenderer` can do. Currently just :
 - To support arbitrary vertices rounded end cap it will break instancing as that uses a new mesh, also we could not pre generate all the meshes at `OnCreateManager`. Maybe I will just pre-generate a set of limited options to choose from instead. (e.g. 0~8 vertex rounded edge and nothing more)
 
 - You cannot change `LineStyle` later, the copy to `MesnInstanceRenderer` component is only at the creation of entity with required components.
+
+- Add changed filter mechanism that ties to the camera's position, so if the camera does not move there is no need to compute the billboard rotation.
 
 5argon

@@ -34,6 +34,8 @@ namespace E7.ECS.LineRenderer
 #endif
 
             LSTS.RememberCamera(camera);
+            //Without this force update it would not render for the first frame in edit mode until we touch something?
+            LSTS.Update(); 
         }
     }
 }

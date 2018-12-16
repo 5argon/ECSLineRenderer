@@ -1,6 +1,6 @@
 # ECS LineRenderer
 
-![screenshot](~ss1.png)
+![screenshot](.ss1.png)
 
 Pure ECS approach to render a line. One `Entity` per one line segment.
 
@@ -24,7 +24,7 @@ To construct complex lines, we create more `LineSegment` entity. They should be 
 
 All lines are rotated to face the main camera in billboard rendering style.
 
-![billboard](~billboard.gif)
+![billboard](.billboard.gif)
 
 ## Info
 

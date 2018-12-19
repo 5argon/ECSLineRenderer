@@ -10,6 +10,7 @@ namespace E7.ECS.LineRenderer
     /// Adds MeshInstanceRenderer and LocalToWorld to new LineSegment.
     /// </summary>
     [ExecuteInEditMode]
+    [UpdateBefore(typeof(LineSegmentTransformSystem))]
     public class LineSegmentRegisterSystem : ComponentSystem
     {
         public struct RegisteredState : ISystemStateComponentData { }

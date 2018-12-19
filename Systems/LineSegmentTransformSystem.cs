@@ -66,7 +66,7 @@ namespace E7.ECS.LineRenderer
                     var seg = segs[i];
                     var ltw = ltws[i];
 
-                    if (float3.Equals(seg.from, seg.to) || float3.Equals(seg.from, cameraPosition))
+                    if (seg.from.Equals(seg.to) || seg.from.Equals(cameraPosition))
                     {
                         continue;
                     }
@@ -77,20 +77,16 @@ namespace E7.ECS.LineRenderer
                     float lineLength = math.length(forward);
                     float3 forwardUnit = forward / lineLength;
 
-                    // now we use billboarding
-
-                    // //Find any perpendicular vector of forward because line has no facing
-                    // float3 perpendicular = 
-                    // forwardUnit.x != 0 ? 
-                    // new float3(1, 1, (-forwardUnit.y - forwardUnit.z) / forwardUnit.x) :
-                    // forwardUnit.y != 0 ? 
-                    // new float3(1, 1, (-forwardUnit.x - forwardUnit.z) / forwardUnit.y) :
-                    // forwardUnit.z != 0 ? 
-                    // new float3(1, 1, (-forwardUnit.x - forwardUnit.y) / forwardUnit.z) :
-                    // float3.zero;
-                    // float3 perpendicularUnit = math.normalize(perpendicular);
-
+                    //billboard rotation
                     float3 toCamera = math.normalize(cameraPosition - seg.from);
+
+                    //If forward and toCamera is collinear the cross product is 0
+                    //and it will gives quaternion with tons of NaN
+                    //So we have to check for that and do nothing if that is the case
+                    if (math.cross(forwardUnit, toCamera).Equals(float3.zero))
+                    {
+                        continue;
+                    }
 
                     quaternion rotation = quaternion.LookRotation(forwardUnit, toCamera);
 

@@ -14,6 +14,7 @@ namespace E7.ECS.LineRenderer
         {
             RenderPipeline.beginCameraRendering += OnBeforeCull;
             Camera.onPreCull += OnBeforeCull;
+
             this.Enabled = false;
         }
 
@@ -32,7 +33,6 @@ namespace E7.ECS.LineRenderer
             if (prefabEditMode && !gameCamera)
                 return;
 #endif
-
             LSTS.RememberCamera(camera);
             //Without this force update it would not render for the first frame in edit mode until we touch something?
             LSTS.Update(); 

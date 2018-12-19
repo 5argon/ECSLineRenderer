@@ -13,5 +13,6 @@ namespace E7.ECS.LineRenderer
         public float3 from;
         public float3 to;
         public float lineWidth;
+        public override string ToString() => $"{from} -> {to} width {lineWidth}";
     }
 }

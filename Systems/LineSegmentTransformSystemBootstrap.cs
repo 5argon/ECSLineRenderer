@@ -26,6 +26,9 @@ namespace E7.ECS.LineRenderer
 #pragma warning restore 649      
         public void OnBeforeCull(Camera camera)
         {
+            //There are 2 more with hide flags : `SceneCamera` and `Preview Camera`
+            if(camera != Camera.main) return;
+
 #if UNITY_EDITOR && UNITY_2018_3_OR_NEWER
             var prefabEditMode = UnityEditor.SceneManagement.StageUtility.GetCurrentStageHandle() !=
                                  UnityEditor.SceneManagement.StageUtility.GetMainStageHandle();

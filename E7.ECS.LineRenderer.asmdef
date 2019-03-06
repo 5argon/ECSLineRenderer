@@ -1,5 +1,5 @@
-﻿{
-	"name": "E7.ECS.LineRenderer",
+{
+    "name": "E7.ECS.LineRenderer",
     "references": [
         "Unity.Burst",
         "Unity.Collections",
@@ -8,7 +8,8 @@
         "Unity.Jobs",
         "Unity.Mathematics",
         "Unity.Rendering.Hybrid",
-        "Unity.Transforms"
+        "Unity.Transforms",
+        "Unity.Transforms.Hybrid"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [],
@@ -17,5 +18,6 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": []
+    "defineConstraints": [],
+    "versionDefines": []
 }

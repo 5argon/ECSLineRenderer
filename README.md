@@ -8,13 +8,15 @@ Pure ECS approach to render a line. One `Entity` per one line segment.
 
 Create an `Entity` containing `LineSegment : IComponentData` (from-to point information and line width) and `LineStyle : ISharedComponentData`, which holds reference type things like the line's material.
 
-That `Entity` would be attached with `MeshInstanceRenderer` and `LocalToWorld` matrix to enable rendering by a system. That matrix is then will be also updated according to what you have in `LineSegment`.
+That `Entity` would be attached with `RenderMesh` and `LocalToWorld` matrix to enable rendering by a system. That matrix is then will be also updated according to what you have in `LineSegment`.
+
+Finally
 
 ## How to include with GitHub functionality of Unity Package Manager
 
-Add this line `"com.e7.ecs.linerenderer": "git://github.com/5argon/ECSLineRenderer.git",` to your packages.json
+Add this line `"com.e7.ecs.linerenderer": "git://github.com/5argon/ECSLineRenderer.git",` to your manifest.json
 
-It does not update automatically when I push fixes to this repo. You must remove the lock in your Packages folder.
+It does not update automatically when I push fixes to this repo. You must remove the lock in your manifest.
 
 ## Idea
 
@@ -36,7 +38,6 @@ All lines are rotated to face the main camera in billboard rendering style.
 
 - `LineSegmentRegistrationSystem` : The logic which you create `LineSegment` entity should come before this system.
 - `LineSegmentTransformSystem` : Update your `LineSegment` from-to location before this system's update. It will update `LocalToWorld` matrix.
-- `LineSegmentTransformSystemBootstrap` : Make the main camera give itself to `LineSegmentTrasformSystem`, it need to do the billboard rotation.
 
 ## Limitations
 
@@ -48,11 +49,11 @@ It could not do fancy things that `LineRenderer` can do. Currently just :
 
 ## TODO 
 
-- I would like to support material property block but I don't want to copy Unity's code and modify into my own, I would have to always check the system on every update and copy again if it changes. For now I want to leave it to a default `MeshInstanceRendererSystem`.
+- I would like to support material property block but I don't want to copy Unity's code and modify into my own, I would have to always check the system on every update and copy again if it changes. For now I want to leave it to a default `RenderMeshSystemV2`.
 
 - To support arbitrary vertices rounded end cap it will break instancing as that uses a new mesh, also we could not pre generate all the meshes at `OnCreateManager`. Maybe I will just pre-generate a set of limited options to choose from instead. (e.g. 0~8 vertex rounded edge and nothing more)
 
-- You cannot change `LineStyle` later, the copy to `MesnInstanceRenderer` component is only at the creation of entity with required components.
+- You cannot change `LineStyle` later, the copy to `RenderMesh` component is only at the creation of entity with required components.
 
 - Add changed filter mechanism that ties to the camera's position, so if the camera does not move there is no need to compute the billboard rotation.
 

@@ -9,7 +9,7 @@ namespace E7.ECS.LineRenderer
     /// <summary>
     /// Adds MeshInstanceRenderer and LocalToWorld to new LineSegment.
     /// </summary>
-    [ExecuteInEditMode]
+    [ExecuteAlways]
     [UpdateBefore(typeof(LineSegmentTransformSystem))]
     public class LineSegmentRegisterSystem : ComponentSystem
     {
@@ -26,30 +26,30 @@ namespace E7.ECS.LineRenderer
             var query = new EntityArchetypeQuery
             {
                 All = new ComponentType[]{
-                    ComponentType.Create<LineSegment>(),
-                    ComponentType.Create<LineStyle>(),
+                    ComponentType.ReadOnly<LineSegment>(),
+                    ComponentType.ReadOnly<LineStyle>(),
                 },
                 Any = new ComponentType[]{
                 },
                 None = new ComponentType[]{
-                    ComponentType.Create<RegisteredState>(),
+                    ComponentType.ReadOnly<RegisteredState>(),
                 },
             };
             var query2 = new EntityArchetypeQuery
             {
                 All = new ComponentType[]{
-                    ComponentType.Create<RegisteredState>(),
+                    ComponentType.ReadOnly<RegisteredState>(),
                 },
                 Any = new ComponentType[]{
                 },
                 None = new ComponentType[]{
-                    ComponentType.Create<LineSegment>(),
-                    ComponentType.Create<LineStyle>(),
+                    ComponentType.ReadOnly<LineSegment>(),
+                    ComponentType.ReadOnly<LineStyle>(),
                 },
             };
             cg = GetComponentGroup(query, query2);
-            newRegisterCg = GetComponentGroup(ComponentType.Create<NewRegister>());
-            unregisterCg = GetComponentGroup(ComponentType.Create<Unregister>());
+            newRegisterCg = GetComponentGroup(ComponentType.ReadOnly<NewRegister>());
+            unregisterCg = GetComponentGroup(ComponentType.ReadOnly<Unregister>());
             CreateMesh();
         }
 
@@ -142,28 +142,32 @@ namespace E7.ECS.LineRenderer
 
             if (newRegisterCg.CalculateLength() > 0)
             {
-                var ea = newRegisterCg.GetEntityArray().ToArray();
-                for (int i = 0; i < ea.Length; i++)
+                using (var ea = newRegisterCg.ToEntityArray(Allocator.TempJob))
                 {
-                    Entity e = ea[i];
-                    var ls = EntityManager.GetSharedComponentData<LineStyle>(e);
+                    for (int i = 0; i < ea.Length; i++)
+                    {
+                        Entity e = ea[i];
+                        var ls = EntityManager.GetSharedComponentData<LineStyle>(e);
 
-                    EntityManager.AddSharedComponentData(e, new RenderMesh { mesh = lineMesh, material = ls.lineMaterial });
-                    EntityManager.AddComponentData(e, new LocalToWorld());
+                        EntityManager.AddSharedComponentData(e, new RenderMesh { mesh = lineMesh, material = ls.lineMaterial });
+                        EntityManager.AddComponentData(e, new LocalToWorld());
 
-                    EntityManager.AddComponentData(e, new RegisteredState());
-                    EntityManager.RemoveComponent<NewRegister>(e);
+                        EntityManager.AddComponentData(e, new RegisteredState());
+                        EntityManager.RemoveComponent<NewRegister>(e);
+                    }
                 }
             }
 
             if (unregisterCg.CalculateLength() > 0)
             {
-                var ea = unregisterCg.GetEntityArray().ToArray();
-                for (int i = 0; i < ea.Length; i++)
+                using (var ea = unregisterCg.ToEntityArray(Allocator.TempJob))
                 {
-                    Entity e = ea[i];
-                    EntityManager.RemoveComponent<Unregister>(e);
-                    EntityManager.RemoveComponent<RegisteredState>(e);
+                    for (int i = 0; i < ea.Length; i++)
+                    {
+                        Entity e = ea[i];
+                        EntityManager.RemoveComponent<Unregister>(e);
+                        EntityManager.RemoveComponent<RegisteredState>(e);
+                    }
                 }
             }
         }

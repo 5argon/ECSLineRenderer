@@ -148,7 +148,7 @@ namespace E7.ECS.LineRenderer
                     Entity e = ea[i];
                     var ls = EntityManager.GetSharedComponentData<LineStyle>(e);
 
-                    EntityManager.AddSharedComponentData(e, new MeshInstanceRenderer {  mesh = lineMesh, material  = ls.lineMaterial });
+                    EntityManager.AddSharedComponentData(e, new RenderMesh { mesh = lineMesh, material = ls.lineMaterial });
                     EntityManager.AddComponentData(e, new LocalToWorld());
 
                     EntityManager.AddComponentData(e, new RegisteredState());

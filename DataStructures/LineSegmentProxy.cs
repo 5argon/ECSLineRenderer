@@ -2,7 +2,7 @@ using Unity.Entities;
 
 namespace E7.ECS.LineRenderer
 {
-    public class LineSegmentComponent : ComponentDataWrapper<LineSegment> { 
+    public class LineSegmentComponent : ComponentDataProxy<LineSegment> { 
 
         protected override void ValidateSerializedData(ref LineSegment serializedData)
         {

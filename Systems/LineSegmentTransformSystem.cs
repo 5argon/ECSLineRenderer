@@ -55,9 +55,9 @@ namespace E7.ECS.LineRenderer
             [ReadOnly] public ArchetypeChunkComponentType<LineSegment> lineSegmentType;
             public ArchetypeChunkComponentType<LocalToWorld> ltwType;
 
-            public void Execute(ArchetypeChunk ac, int ci)
+            public void Execute(ArchetypeChunk ac, int chunkIndex, int firstEntityIndex)
             {
-                if (!ac.DidAddOrChange(lineSegmentType, lastSystemVersion)) return;
+                if (!ac.DidChange(lineSegmentType, lastSystemVersion)) return;
 
                 var segs = ac.GetNativeArray(lineSegmentType);
                 var ltws = ac.GetNativeArray(ltwType);

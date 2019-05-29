@@ -12,39 +12,45 @@ namespace E7.ECS.LineRenderer
     [ExecuteAlways]
     public class LineSegmentTransformSystem : JobComponentSystem
     {
-        ComponentGroup lineSegmentGroup;
-        ComponentGroup billboardCameraGroup;
+        EntityQuery lineSegmentGroup;
+        EntityQuery billboardCameraGroup;
 
-        protected override void OnCreateManager()
+        protected override void OnCreate()
         {
-            var lineSegmentQuery = new EntityArchetypeQuery
+
+            var lineSegmentQuery = new EntityQueryDesc
             {
                 All = new ComponentType[]{
                     ComponentType.ReadOnly<LineSegment>(),
-                    ComponentType.ReadWrite<LocalToWorld>(),
+                    ComponentType.ReadWrite<Translation>(),
+                    ComponentType.ReadWrite<Rotation>(),
+                    ComponentType.ReadWrite<NonUniformScale>(),
                 },
                 Any = new ComponentType[]{
                 },
                 None = new ComponentType[]{
                 },
             };
-            lineSegmentGroup = GetComponentGroup(lineSegmentQuery);
-            billboardCameraGroup = GetComponentGroup(
+            lineSegmentGroup = GetEntityQuery(lineSegmentQuery);
+            billboardCameraGroup = GetEntityQuery(
                 ComponentType.ReadOnly<BillboardCamera>(),
-                ComponentType.ReadOnly<LocalToWorld>()
+                ComponentType.ReadWrite<LocalToWorld>()
             );
         }
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            var aca = billboardCameraGroup.CreateArchetypeChunkArray(Allocator.TempJob);
+            var cameraAca = billboardCameraGroup.CreateArchetypeChunkArray(Allocator.TempJob);
 
             var linePositioningJobHandle = new LinePositioningJob
             {
-                cameraAca = aca,
+                cameraAca = cameraAca,
                 lastSystemVersion = LastSystemVersion,
                 lineSegmentType = GetArchetypeChunkComponentType<LineSegment>(isReadOnly: true),
-                ltwType = GetArchetypeChunkComponentType<LocalToWorld>(isReadOnly: false),
+                ltwType = GetArchetypeChunkComponentType<LocalToWorld>(isReadOnly: true),
+                translationType = GetArchetypeChunkComponentType<Translation>(isReadOnly: false),
+                rotationType = GetArchetypeChunkComponentType<Rotation>(isReadOnly: false),
+                scaleType = GetArchetypeChunkComponentType<NonUniformScale>(isReadOnly: false),
             }.Schedule(lineSegmentGroup, inputDeps);
 
             return linePositioningJobHandle;
@@ -57,20 +63,34 @@ namespace E7.ECS.LineRenderer
             [ReadOnly] public ArchetypeChunkComponentType<LineSegment> lineSegmentType;
             public uint lastSystemVersion;
 
-            public ArchetypeChunkComponentType<LocalToWorld> ltwType;
+            [ReadOnly] public ArchetypeChunkComponentType<LocalToWorld> ltwType;
+
+            public ArchetypeChunkComponentType<Translation> translationType;
+            public ArchetypeChunkComponentType<Rotation> rotationType;
+            public ArchetypeChunkComponentType<NonUniformScale> scaleType;
 
             public void Execute(ArchetypeChunk ac, int chunkIndex, int firstEntityIndex)
             {
-                if (!ac.DidChange(lineSegmentType, lastSystemVersion)) return;
+                //Do not commit to change if possible
 
+                bool lineChunkChanged = ac.DidChange(lineSegmentType, lastSystemVersion);
+                bool cameraMovedOrRotated = cameraAca.Length != 0 && cameraAca[0].DidChange(ltwType, lastSystemVersion);
 
+                if (!lineChunkChanged && !cameraMovedOrRotated) return;
+
+                //These gets will commit a version bump
                 var segs = ac.GetNativeArray(lineSegmentType);
-                var ltws = ac.GetNativeArray(ltwType);
+                var trans = ac.GetNativeArray(translationType);
+                var rots = ac.GetNativeArray(rotationType);
+                var scales = ac.GetNativeArray(scaleType);
 
                 for (int i = 0; i < segs.Length; i++)
                 {
                     var seg = segs[i];
-                    var ltw = ltws[i];
+
+                    var tran = trans[i];
+                    var rot = rots[i];
+                    var scale = scales[i];
 
                     if (seg.from.Equals(seg.to))
                     {
@@ -83,29 +103,35 @@ namespace E7.ECS.LineRenderer
                     float lineLength = math.length(forward);
                     float3 forwardUnit = forward / lineLength;
 
-                    //billboard rotation
+                    //Billboard rotation
 
-                    //If forward and toCamera is collinear the cross product is 0
-                    //and it will gives quaternion with tons of NaN
-                    //So we have to check for that and do nothing if that is the case
                     quaternion rotation = quaternion.identity;
                     if (cameraAca.Length != 0)
                     {
-                        var cameraLtws = cameraAca[0].GetNativeArray(ltwType);
-                        var cameraPos = cameraLtws[0].Position;
-                        float3 toCamera = math.normalize(cameraPos - seg.from);
+                        var cameraTranslations = cameraAca[0].GetNativeArray(ltwType);
 
-                        if ((seg.from.Equals(cameraPos) || math.cross(forwardUnit, toCamera).Equals(float3.zero)) == false)
+                        //TODO: Better support for multiple cameras. It would be via `alignWithCamera` on the LineStyle?
+
+                        var cameraRigid = math.RigidTransform(cameraTranslations[0].Value);
+                        var cameraTranslation = cameraRigid.pos;
+                        var cameraRotation = cameraRigid.rot; //TODO : use this somehow?
+
+                        float3 toCamera = math.normalize(cameraTranslation - seg.from);
+
+                        //If forward and toCamera is collinear the cross product is 0
+                        //and it will gives quaternion with tons of NaN
+                        //So we rather do nothing if that is the case
+                        if ((seg.from.Equals(cameraTranslation) || math.cross(forwardUnit, toCamera).Equals(float3.zero)) == false)
                         {
+                            //This is wrong because it only taken account of the camera's position, not also its rotation.
                             rotation = quaternion.LookRotation(forwardUnit, toCamera);
+                            //Debug.Log($"ROTATING {rotation} to {cameraTranslation}");
                         }
                     }
 
-                    var mat = math.mul(
-                            new float4x4(rotation, seg.from),
-                            float4x4.Scale(seg.lineWidth, 1, lineLength));
-
-                    ltws[i] = new LocalToWorld { Value = mat };
+                    trans[i] = new Translation { Value = seg.from };
+                    rots[i] = new Rotation { Value = rotation };
+                    scales[i] = new NonUniformScale { Value = math.float3(seg.lineWidth, 1, lineLength) };
                 }
             }
         }

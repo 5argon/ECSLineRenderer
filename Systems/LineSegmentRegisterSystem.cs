@@ -1,29 +1,26 @@
 ﻿using Unity.Collections;
 using Unity.Entities;
-using Unity.Transforms;
 using Unity.Rendering;
+using Unity.Transforms;
 using UnityEngine;
 
 namespace E7.ECS.LineRenderer
 {
     /// <summary>
-    /// Adds MeshInstanceRenderer and LocalToWorld to new LineSegment.
+    /// Adds <see cref="RenderMesh"> and <see cref="LocalToWorld"> to new <see cref="LineSegment">.
     /// </summary>
     [ExecuteAlways]
     [UpdateBefore(typeof(LineSegmentTransformSystem))]
     public class LineSegmentRegisterSystem : ComponentSystem
     {
         public struct RegisteredState : ISystemStateComponentData { }
-        private struct NewRegister : IComponentData { }
-        private struct Unregister : IComponentData { }
 
-        ComponentGroup cg;
-        ComponentGroup newRegisterCg;
-        ComponentGroup unregisterCg;
+        EntityQuery toUnregisterLinesQuery;
+        EntityQuery toRegisterLinesQuery;
 
-        protected override void OnCreateManager()
+        protected override void OnCreate()
         {
-            var query = new EntityArchetypeQuery
+            var toRegisterLinesQueryDesc = new EntityQueryDesc
             {
                 All = new ComponentType[]{
                     ComponentType.ReadOnly<LineSegment>(),
@@ -35,7 +32,7 @@ namespace E7.ECS.LineRenderer
                     ComponentType.ReadOnly<RegisteredState>(),
                 },
             };
-            var query2 = new EntityArchetypeQuery
+            var toUnregisterLinesQueryDesc = new EntityQueryDesc
             {
                 All = new ComponentType[]{
                     ComponentType.ReadOnly<RegisteredState>(),
@@ -47,130 +44,145 @@ namespace E7.ECS.LineRenderer
                     ComponentType.ReadOnly<LineStyle>(),
                 },
             };
-            cg = GetComponentGroup(query, query2);
-            newRegisterCg = GetComponentGroup(ComponentType.ReadOnly<NewRegister>());
-            unregisterCg = GetComponentGroup(ComponentType.ReadOnly<Unregister>());
-            CreateMesh();
-        }
 
-        Mesh lineMesh;
-        const float lineDefaultWidth = 1f;
-        const float lineDefaultWidthHalf = lineDefaultWidth / 2f;
-        const string lineMeshName = "ECSLineMesh";
-        private void CreateMesh()
-        {
-            var mesh = new Mesh();
-            mesh.name = lineMeshName;
+            toRegisterLinesQuery = GetEntityQuery(toRegisterLinesQueryDesc);
+            toUnregisterLinesQuery = GetEntityQuery(toUnregisterLinesQueryDesc);
 
-            var vertices = new Vector3[4];
-
-            vertices[0] = new Vector3(-lineDefaultWidthHalf, 0, 0);
-            vertices[1] = new Vector3(lineDefaultWidthHalf, 0, 0);
-            vertices[2] = new Vector3(-lineDefaultWidthHalf, 0, 1);
-            vertices[3] = new Vector3(lineDefaultWidthHalf, 0, 1);
-
-            mesh.vertices = vertices;
-
-            var tri = new int[6];
-
-            tri[0] = 0;
-            tri[1] = 2;
-            tri[2] = 1;
-
-            tri[3] = 2;
-            tri[4] = 3;
-            tri[5] = 1;
-
-            mesh.triangles = tri;
-
-            var normals = new Vector3[4];
-
-            normals[0] = -Vector3.forward;
-            normals[1] = -Vector3.forward;
-            normals[2] = -Vector3.forward;
-            normals[3] = -Vector3.forward;
-
-            mesh.normals = normals;
-
-            var uv = new Vector2[4];
-
-            uv[0] = new Vector2(0, 0);
-            uv[1] = new Vector2(1, 0);
-            uv[2] = new Vector2(0, 1);
-            uv[3] = new Vector2(1, 1);
-
-            mesh.uv = uv;
-
-            lineMesh = mesh;
+            CreateMeshIfNotYet();
         }
 
         protected override void OnUpdate()
         {
-            using (var ecb = new EntityCommandBuffer(Allocator.Temp))
-            using (var aca = cg.CreateArchetypeChunkArray(Allocator.TempJob))
-            {
-                var registeredType = GetArchetypeChunkComponentType<RegisteredState>();
-                var lineSegmentType = GetArchetypeChunkComponentType<LineSegment>(isReadOnly: true);
-                var et = GetArchetypeChunkEntityType();
+            //While not attaching registered state yet, add render mesh to all new members.
+            // using (var aca = toRegisterLinesQuery.CreateArchetypeChunkArray(Allocator.TempJob))
+            // {
+            //     if (aca.Length > 0)
+            //     {
+            //         NativeList<int> uniqueLineStyleIndexes = new NativeList<int>(Allocator.Temp);
+            //         var lineStyleType = GetArchetypeChunkSharedComponentType<LineStyle>();
 
-                for (int i = 0; i < aca.Length; i++)
+            //         //TODO : This shouldn't be needed, but somehow the mesh became `null` in editor world??
+            //         CreateMeshIfNotYet();
+
+            //         for (int i = 0; i < aca.Length; i++)
+            //         {
+            //             ArchetypeChunk ac = aca[i];
+            //             var index = ac.GetSharedComponentIndex(lineStyleType);
+            //             Debug.Log($"Shared index to filter : {index}");
+            //             uniqueLineStyleIndexes.Add(index);
+            //         }
+
+            //         //Use filter to batch migrate the line style to render mesh.
+            //         for (int i = 0; i < uniqueLineStyleIndexes.Length; i++)
+            //         {
+            //             var ls = EntityManager.GetSharedComponentData<LineStyle>(uniqueLineStyleIndexes[i]);
+            //             toRegisterLinesQuery.SetFilter(ls);
+            //             EntityManager.AddSharedComponentData(toRegisterLinesQuery, new RenderMesh { mesh = lineMesh, material = ls.lineMaterial });
+            //         }
+            //         toRegisterLinesQuery.ResetFilter();
+            //     }
+            // }
+
+            using (var aca = toRegisterLinesQuery.CreateArchetypeChunkArray(Allocator.TempJob))
+            {
+                if (aca.Length > 0)
                 {
-                    ArchetypeChunk ac = aca[i];
-                    if (!ac.Has(registeredType) && ac.Has(lineSegmentType))
+                    EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
+
+                    var lineStyleType = GetArchetypeChunkSharedComponentType<LineStyle>();
+                    var entityType = GetArchetypeChunkEntityType();
+
+                    //TODO : This shouldn't be needed, but somehow the mesh became `null` in editor world??
+                    CreateMeshIfNotYet();
+
+                    for (int i = 0; i < aca.Length; i++)
                     {
-                        var ea = ac.GetNativeArray(et);
+                        ArchetypeChunk ac = aca[i];
+                        var ea = ac.GetNativeArray(entityType);
+                        var lineStyle = ac.GetSharedComponentData<LineStyle>(lineStyleType, EntityManager);
                         for (int j = 0; j < ea.Length; j++)
                         {
-                            Entity e = ea[j];
-                            ecb.AddComponent(e, new NewRegister());
+                            //Must use ECB or else it would invalidate the interating chunks, etc.
+                            ecb.AddSharedComponent(ea[j], new RenderMesh { mesh = lineMesh, material = lineStyle.material });
                         }
                     }
-                    else if (ac.Has(registeredType) && !ac.Has(lineSegmentType))
-                    {
-                        var ea = ac.GetNativeArray(et);
-                        for (int j = 0; j < ea.Length; j++)
-                        {
-                            Entity e = ea[j];
-                            ecb.AddComponent(e, new Unregister());
-                        }
-                    }
-                }
-                ecb.Playback(EntityManager);
-            }
 
-            //Main thread operations, we could invalidate as we like here
-
-            if (newRegisterCg.CalculateLength() > 0)
-            {
-                using (var ea = newRegisterCg.ToEntityArray(Allocator.TempJob))
-                {
-                    for (int i = 0; i < ea.Length; i++)
-                    {
-                        Entity e = ea[i];
-                        var ls = EntityManager.GetSharedComponentData<LineStyle>(e);
-
-                        EntityManager.AddSharedComponentData(e, new RenderMesh { mesh = lineMesh, material = ls.lineMaterial });
-                        EntityManager.AddComponentData(e, new LocalToWorld());
-
-                        EntityManager.AddComponentData(e, new RegisteredState());
-                        EntityManager.RemoveComponent<NewRegister>(e);
-                    }
+                    ecb.Playback(EntityManager);
                 }
             }
 
-            if (unregisterCg.CalculateLength() > 0)
+            //Use EQ operation to prepare other components where they don't need initialization value.
+            EntityManager.AddComponent(toRegisterLinesQuery, ComponentType.ReadOnly<Translation>());
+            EntityManager.AddComponent(toRegisterLinesQuery, ComponentType.ReadOnly<Rotation>());
+            EntityManager.AddComponent(toRegisterLinesQuery, ComponentType.ReadOnly<NonUniformScale>());
+            //Unity stopped adding LTW for us without GO conversion.
+            EntityManager.AddComponent(toRegisterLinesQuery, ComponentType.ReadOnly<LocalToWorld>()); 
+
+            //This make them not registered again.
+            EntityManager.AddComponent(toRegisterLinesQuery, ComponentType.ReadOnly<RegisteredState>());
+
+            //This is for clean up of system state component.
+            EntityManager.RemoveComponent(toUnregisterLinesQuery, ComponentType.ReadOnly<RegisteredState>());
+        }
+
+        /// <summary>
+        /// A rectangle we will always use for all lines.
+        /// </summary>
+        Mesh lineMesh;
+
+        const float lineDefaultWidth = 1f;
+        const float lineDefaultWidthHalf = lineDefaultWidth / 2f;
+        const string lineMeshName = "ECSLineMesh";
+        private void CreateMeshIfNotYet()
+        {
+            if (lineMesh == null)
             {
-                using (var ea = unregisterCg.ToEntityArray(Allocator.TempJob))
-                {
-                    for (int i = 0; i < ea.Length; i++)
-                    {
-                        Entity e = ea[i];
-                        EntityManager.RemoveComponent<Unregister>(e);
-                        EntityManager.RemoveComponent<RegisteredState>(e);
-                    }
-                }
+                var mesh = new Mesh();
+                mesh.name = lineMeshName;
+
+                var vertices = new Vector3[4];
+
+                vertices[0] = new Vector3(-lineDefaultWidthHalf, 0, 0);
+                vertices[1] = new Vector3(lineDefaultWidthHalf, 0, 0);
+                vertices[2] = new Vector3(-lineDefaultWidthHalf, 0, 1);
+                vertices[3] = new Vector3(lineDefaultWidthHalf, 0, 1);
+
+                mesh.vertices = vertices;
+
+                var tri = new int[6];
+
+                tri[0] = 0;
+                tri[1] = 2;
+                tri[2] = 1;
+
+                tri[3] = 2;
+                tri[4] = 3;
+                tri[5] = 1;
+
+                mesh.triangles = tri;
+
+                var normals = new Vector3[4];
+
+                normals[0] = -Vector3.forward;
+                normals[1] = -Vector3.forward;
+                normals[2] = -Vector3.forward;
+                normals[3] = -Vector3.forward;
+
+                mesh.normals = normals;
+
+                var uv = new Vector2[4];
+
+                uv[0] = new Vector2(0, 0);
+                uv[1] = new Vector2(1, 0);
+                uv[2] = new Vector2(0, 1);
+                uv[3] = new Vector2(1, 1);
+
+                mesh.uv = uv;
+
+                lineMesh = mesh;
             }
         }
+
 
     }
 }

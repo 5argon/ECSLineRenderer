@@ -4,13 +4,29 @@
 
 ECS approach to render a line I made for personal use on commissioned non-game visualization work. The feature is not quite enough but I decided to open source it.
 
-Coded with mostly archetype chunk iteration API since it will be the most resistant to API changes in this preview phase. So if you want to contribute, please try to stick to chunk iteration if it is a main thread work, and `IJobChunk` for worker thread. Thank you!
+Coded with mostly archetype chunk iteration API since it will be the most resistant to API changes in this preview phase. So if you want to contribute, please try to stick to chunk iteration if it is a main thread work, and `IJobChunk` for worker thread. Thank you! (With `IJobChunk` instead of `IJobForEach`, we could control chunk version bumps and add some `DidChange` optimizations.)
 
 ## How to include with GitHub functionality of Unity Package Manager
 
 Add this line `"com.e7.ecs.line-renderer": "git://github.com/5argon/ECSLineRenderer.git",` to your manifest.json
 
 It does not update automatically when I push fixes to this repo. You must remove the lock in your manifest.
+
+## Core idea
+
+I want to find a new way to render an imperfect yet efficient line by trying to leverage geometry instancing and ECS together.
+
+A typical line renderer works by triangulation of a set of connecting points. For example Unity's `LineRenderer` always create 2 triangles per one pair of point regardless of their angle.
+
+![line](.Documentation/images/line.png)
+
+Per 1 line with any number of points Unity generated 1 unique mesh. But, this mesh is unlikely to be the same as other lines, it could not be rendered by instancing due to different mesh. (Even though they could be batched by the same material.) Also if you want to animate line's points, every little movement would need an entire mesh regenerated.
+
+In this package, I want to try using the same mesh as much as possible to assemble a line that could be instanced. I am aware that this may produce an ugly looking line especially the corner if I decided to just overlap rectangles (and it wouldn't work well for non-solid material), but I think it is an interesting experiment and could be useful for some cases, like a line small enough that the defects aren't that visible in exchange of performance. And lastly, I would like to be able to move each point on the line without mesh regeneration at all. Application includes an efficient wireframe,  a good base for application like animated graphs, or just drawing grids/tables in general.
+
+The top image has overlapping corner which produces jagged look, but it looks acceptable at glance because the line is white and its width is small enough. Only when extremely zoomed in that you start to notice defects.
+
+[See this issue for details](https://github.com/5argon/ECSLineRenderer/issues/3).
 
 ## `LineSegment`
 
@@ -53,8 +69,8 @@ EntityManager.AddSharedComponentData(e, new LineStyle { material = mat });
 
 ## Systems
 
-- `LineSegmentRegistrationSystem` : The logic which you create `LineSegment` entity should come before this system.
-- `LineSegmentTransformSystem` : Update your `LineSegment` from-to location before this system's update.
+- `LineSegmentRegistrationSystem` : Having both `LineSegment` and `LineStyle` on the same `Entity` will qualify for a registration, which you will get a `RenderMesh` with migrated material from your `LineStyle`.
+- `LineSegmentTransformSystem` : Make TRS for `RenderMesh` based on information in `LineSegment`. Move your line by changing `LineSegment`'s data before this system.
 
 ## Limitations + problems
 

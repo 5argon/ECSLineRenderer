@@ -12,13 +12,12 @@ namespace E7.ECS.LineRenderer
     [ExecuteAlways]
     public class LineSegmentTransformSystem : JobComponentSystem
     {
-        EntityQuery lineSegmentGroup;
-        EntityQuery billboardCameraGroup;
+        EntityQuery lineSegmentQuery;
+        EntityQuery billboardCameraQuery;
 
         protected override void OnCreate()
         {
-
-            var lineSegmentQuery = new EntityQueryDesc
+            var lineSegmentQd = new EntityQueryDesc
             {
                 All = new ComponentType[]{
                     ComponentType.ReadOnly<LineSegment>(),
@@ -31,8 +30,8 @@ namespace E7.ECS.LineRenderer
                 None = new ComponentType[]{
                 },
             };
-            lineSegmentGroup = GetEntityQuery(lineSegmentQuery);
-            billboardCameraGroup = GetEntityQuery(
+            lineSegmentQuery = GetEntityQuery(lineSegmentQd);
+            billboardCameraQuery = GetEntityQuery(
                 ComponentType.ReadOnly<BillboardCamera>(),
                 ComponentType.ReadWrite<LocalToWorld>()
             );
@@ -40,7 +39,7 @@ namespace E7.ECS.LineRenderer
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            var cameraAca = billboardCameraGroup.CreateArchetypeChunkArray(Allocator.TempJob);
+            var cameraAca = billboardCameraQuery.CreateArchetypeChunkArray(Allocator.TempJob);
 
             var linePositioningJobHandle = new LinePositioningJob
             {
@@ -51,7 +50,7 @@ namespace E7.ECS.LineRenderer
                 translationType = GetArchetypeChunkComponentType<Translation>(isReadOnly: false),
                 rotationType = GetArchetypeChunkComponentType<Rotation>(isReadOnly: false),
                 scaleType = GetArchetypeChunkComponentType<NonUniformScale>(isReadOnly: false),
-            }.Schedule(lineSegmentGroup, inputDeps);
+            }.Schedule(lineSegmentQuery, inputDeps);
 
             return linePositioningJobHandle;
         }

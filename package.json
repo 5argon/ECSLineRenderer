@@ -6,8 +6,8 @@
     "unity": "2018.1",
     "description": "ECS approach to render a line.",
     "dependencies": {
-        "com.unity.entities": "0.0.12-preview.33",
-        "com.unity.rendering.hybrid": "0.0.1-preview.13"
+        "com.unity.entities": "0.4.0-preview.10",
+        "com.unity.rendering.hybrid": "0.3.1-preview.10"
     },
     "keywords": [
         "entities",

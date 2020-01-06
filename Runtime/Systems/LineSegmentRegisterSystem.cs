@@ -1,5 +1,6 @@
 ﻿using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
@@ -7,90 +8,50 @@ using UnityEngine;
 namespace E7.ECS.LineRenderer
 {
     /// <summary>
-    /// Adds <see cref="RenderMesh"> and <see cref="LocalToWorld"> to new <see cref="LineSegment">.
+    /// Any new <see cref="LineSegment"/> together with <see cref="LineStyle"/>
+    /// get TRS, LTW, and <see cref="RenderMesh"/> so it is ready for rendering.
+    ///
+    /// <see cref="LineSegmentTransformSystem"/> will put data in <see cref="LineSegment"/>
+    /// to TRS, then Unity Transform system put TRS to LTW, then you see the rendering.
     /// </summary>
     [ExecuteAlways]
     [UpdateBefore(typeof(LineSegmentTransformSystem))]
-    public class LineSegmentRegisterSystem : ComponentSystem
+    [UpdateInGroup(typeof(LineRendererSimulationGroup))]
+    public class LineSegmentRegisterSystem : JobComponentSystem
     {
-        public struct RegisteredState : ISystemStateComponentData { }
+        struct RegisteredState : ISystemStateComponentData
+        {
+        }
 
-        EntityQuery toUnregisterLinesQuery;
-        EntityQuery toRegisterLinesQuery;
+        EntityQuery cleanUpQuery;
+        EntityQuery newRegisterQuery;
 
         protected override void OnCreate()
         {
-            var toRegisterLinesQueryDesc = new EntityQueryDesc
-            {
-                All = new ComponentType[]{
-                    ComponentType.ReadOnly<LineSegment>(),
-                    ComponentType.ReadOnly<LineStyle>(),
-                },
-                Any = new ComponentType[]{
-                },
-                None = new ComponentType[]{
-                    ComponentType.ReadOnly<RegisteredState>(),
-                },
-            };
-            var toUnregisterLinesQueryDesc = new EntityQueryDesc
-            {
-                All = new ComponentType[]{
-                    ComponentType.ReadOnly<RegisteredState>(),
-                },
-                Any = new ComponentType[]{
-                },
-                None = new ComponentType[]{
-                    ComponentType.ReadOnly<LineSegment>(),
-                    ComponentType.ReadOnly<LineStyle>(),
-                },
-            };
+            newRegisterQuery = GetEntityQuery(
+                ComponentType.ReadOnly<LineSegment>(),
+                ComponentType.ReadOnly<LineStyle>(),
+                ComponentType.Exclude<RegisteredState>()
+            );
 
-            toRegisterLinesQuery = GetEntityQuery(toRegisterLinesQueryDesc);
-            toUnregisterLinesQuery = GetEntityQuery(toUnregisterLinesQueryDesc);
-
+            cleanUpQuery = GetEntityQuery(
+                ComponentType.Exclude<LineSegment>(),
+                ComponentType.Exclude<LineStyle>(),
+                ComponentType.ReadOnly<RegisteredState>()
+            );
             CreateMeshIfNotYet();
         }
 
-        protected override void OnUpdate()
+        protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            //While not attaching registered state yet, add render mesh to all new members.
-            // using (var aca = toRegisterLinesQuery.CreateArchetypeChunkArray(Allocator.TempJob))
-            // {
-            //     if (aca.Length > 0)
-            //     {
-            //         NativeList<int> uniqueLineStyleIndexes = new NativeList<int>(Allocator.Temp);
-            //         var lineStyleType = GetArchetypeChunkSharedComponentType<LineStyle>();
-
-            //         //TODO : This shouldn't be needed, but somehow the mesh became `null` in editor world??
-            //         CreateMeshIfNotYet();
-
-            //         for (int i = 0; i < aca.Length; i++)
-            //         {
-            //             ArchetypeChunk ac = aca[i];
-            //             var index = ac.GetSharedComponentIndex(lineStyleType);
-            //             Debug.Log($"Shared index to filter : {index}");
-            //             uniqueLineStyleIndexes.Add(index);
-            //         }
-
-            //         //Use filter to batch migrate the line style to render mesh.
-            //         for (int i = 0; i < uniqueLineStyleIndexes.Length; i++)
-            //         {
-            //             var ls = EntityManager.GetSharedComponentData<LineStyle>(uniqueLineStyleIndexes[i]);
-            //             toRegisterLinesQuery.SetFilter(ls);
-            //             EntityManager.AddSharedComponentData(toRegisterLinesQuery, new RenderMesh { mesh = lineMesh, material = ls.lineMaterial });
-            //         }
-            //         toRegisterLinesQuery.ResetFilter();
-            //     }
-            // }
-
-            using (var aca = toRegisterLinesQuery.CreateArchetypeChunkArray(Allocator.TempJob))
+            //Migrate material on LineStyle to RenderMesh by chunks
+            using (var aca = newRegisterQuery.CreateArchetypeChunkArray(Allocator.TempJob))
             {
                 if (aca.Length > 0)
                 {
                     EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
 
                     var lineStyleType = GetArchetypeChunkSharedComponentType<LineStyle>();
-                    var entityType = GetArchetypeChunkEntityType();
 
                     //TODO : This shouldn't be needed, but somehow the mesh became `null` in editor world??
                     CreateMeshIfNotYet();
@@ -98,31 +59,33 @@ namespace E7.ECS.LineRenderer
                     for (int i = 0; i < aca.Length; i++)
                     {
                         ArchetypeChunk ac = aca[i];
-                        var ea = ac.GetNativeArray(entityType);
                         var lineStyle = ac.GetSharedComponentData<LineStyle>(lineStyleType, EntityManager);
-                        for (int j = 0; j < ea.Length; j++)
-                        {
-                            //Must use ECB or else it would invalidate the interating chunks, etc.
-                            ecb.AddSharedComponent(ea[j], new RenderMesh { mesh = lineMesh, material = lineStyle.material });
-                        }
+
+                        //Filter to narrow down chunk operation.
+                        newRegisterQuery.SetSharedComponentFilter(lineStyle);
+                        ecb.AddSharedComponent(newRegisterQuery,
+                            new RenderMesh {mesh = lineMesh, material = lineStyle.material});
                     }
 
                     ecb.Playback(EntityManager);
+                    newRegisterQuery.ResetFilter();
                 }
             }
 
             //Use EQ operation to prepare other components where they don't need initialization value.
-            EntityManager.AddComponent(toRegisterLinesQuery, ComponentType.ReadOnly<Translation>());
-            EntityManager.AddComponent(toRegisterLinesQuery, ComponentType.ReadOnly<Rotation>());
-            EntityManager.AddComponent(toRegisterLinesQuery, ComponentType.ReadOnly<NonUniformScale>());
+            EntityManager.AddComponent(newRegisterQuery, ComponentType.ReadOnly<Translation>());
+            EntityManager.AddComponent(newRegisterQuery, ComponentType.ReadOnly<Rotation>());
+            EntityManager.AddComponent(newRegisterQuery, ComponentType.ReadOnly<NonUniformScale>());
             //Unity stopped adding LTW for us without GO conversion.
-            EntityManager.AddComponent(toRegisterLinesQuery, ComponentType.ReadOnly<LocalToWorld>()); 
+            EntityManager.AddComponent(newRegisterQuery, ComponentType.ReadOnly<LocalToWorld>());
 
             //This make them not registered again.
-            EntityManager.AddComponent(toRegisterLinesQuery, ComponentType.ReadOnly<RegisteredState>());
+            EntityManager.AddComponent(newRegisterQuery, ComponentType.ReadOnly<RegisteredState>());
 
-            //This is for clean up of system state component.
-            EntityManager.RemoveComponent(toUnregisterLinesQuery, ComponentType.ReadOnly<RegisteredState>());
+            //This is for clean up of system state component in the case the entity was destroyed.
+            EntityManager.RemoveComponent(cleanUpQuery, ComponentType.ReadOnly<RegisteredState>());
+            
+            return default;
         }
 
         /// <summary>
@@ -133,6 +96,7 @@ namespace E7.ECS.LineRenderer
         const float lineDefaultWidth = 1f;
         const float lineDefaultWidthHalf = lineDefaultWidth / 2f;
         const string lineMeshName = "ECSLineMesh";
+
         private void CreateMeshIfNotYet()
         {
             if (lineMesh == null)
@@ -182,7 +146,5 @@ namespace E7.ECS.LineRenderer
                 lineMesh = mesh;
             }
         }
-
-
     }
 }

@@ -28,23 +28,33 @@ The top image has overlapping corner which produces jagged look, but it looks ac
 
 [See this issue for details](https://github.com/5argon/ECSLineRenderer/issues/3).
 
-## `LineSegment`
+## How it works here
 
-Generate a thin rectangle mesh that goes 1 unit in the Z axis. We could use z scale as line length, x scale as line width, position as line from, and rotation as line to. Assuming that this is only one segment of a line.
+It generate 1 piece of a thin rectangle mesh that goes 1 unit in the Z axis. We could use z scale as line length, x scale as line width, position as line from, and rotation as line to. Assuming that this is only one segment of a line.
 
-To construct complex lines, we create more `LineSegment` entity. They should be render instanced as they are using the same mesh. What's left is to wait for `HybridRenderer` to support material property block so we could change line color without a new material.
+`LineSegment` contains from-to absolute position in world coordinate. To construct complex lines, we create many `LineSegment` entity with connecting from-to. They should be render instanced as they are using the same mesh. Line width is also on this component.
 
-All lines are rotated to face the main camera in billboard rendering style.
+The line then need a material. So you specify that on `LineStyle` `ISharedComponentData`. Without **both** `LineSegment` and `LineStyle` my systems will not work on them.
+
+Finally all lines should be rotated to face the main camera in billboard rendering style. By attaching `BillboardCameraProxy`, the system will take this camera's transform into calculation. But currently I think the implementation is still incorrect it fails in many slanted camera angles.
+
+```
+// ECSLineRenderer
+
+LineSegment -> Transform + NonUniformScale
+LineStyle -> RenderMesh
+BillboardCameraProxy -> Rotation
+
+// Unity's built-in TransformSystemGroup
+
+Transform + Rotation + NonUniformScale -> LocalToWorld
+
+// Unity's Hybrid Renderer Package
+
+LocalToWorld + RenderMesh -> You see things on screen.
+```
 
 ![billboard](.Documentation/images/billboard.gif)
-
-## `LineStyle`
-
-Without **both** `LineSegment` and `LineStyle`, you will not get `RenderMesh` attached because it needs to know which material you want.
-
-## `BillboardCameraProxy`
-
-If you don't add this to one of your `Camera`, the lines don't know which camera to rotate to.
 
 ## Rendering
 
@@ -57,7 +67,7 @@ For someone that is always looking for "pure ECS" approach to everything, no, it
 ```csharp
 var e = EntityManager.CreateEntity();
 EntityManager.AddComponentData(e, new LineSegment(math.float3(1, 1, 1), math.float3(1, 2, 1)));
-var mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/ECSLineRenderer/SampleLineMaterial.mat");
+var mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/ECSLineRenderer/YellowLineMaterial.mat");
 EntityManager.AddSharedComponentData(e, new LineStyle { material = mat });
 ```
 
@@ -65,21 +75,31 @@ EntityManager.AddSharedComponentData(e, new LineStyle { material = mat });
 
 - Line width is in Unity's standard grid unit.
 - If position from and to are the same the system will not update the line. (Stays at previous position)
-- It came with a bonus `LineSegmentProxy` and `LineStyleProxy` so you could play with it in the scene/edit mode with hybrid ECS.
+
+### GameObjectEntity support
+
+Attach `LineSegmentProxy` and `LineStyleProxy` which will in turn attach `GameObjectEntity`. You could then play with it in the scene/edit mode with hybrid ECS.
+
+### GameObject Conversion / SubScene support
+
+This is a new and preferred way to author ECS content. `GameObjectEntity` has a performance problem to maintain a link to `GameObject`. `ConvertToEntity` has a problem that things disappear when you enter play mode if you want pure ECS at runtime (without inject mode, which would arrive the same performance problem) and also it is a problem in edit time that you don't know how it would end up.
+
+SubScene is the best of both worlds. Things with `IConvertGameObjectToEntity` inside SubScene get converted in play mode like `ConvertToEntity`, but they remains touchable in Hierarchy and anytime you do something they will get reconverted seamlessly. It feels like old `GameObjectEntity` approach except instead of synchronization it keeps reconverting in one way, then in the real build it works like pure ECS since you cannot touch Hierarchy in the real build.
+
+I have added `LineAuthoring : IConvertGameObjectToEntity` for this. See the green line in sample scene how this get converted to `LineSegment` and `LineStyle`. Since all systems here has `[ExecuteAlways]`, you can turn on `DOTS > Live Link Mode > Live Link Conversion in Edit Mode` then choose SceneView mode you like to see SubScene in action even in edit mode.
 
 ## Systems
 
-- `LineSegmentRegistrationSystem` : Having both `LineSegment` and `LineStyle` on the same `Entity` will qualify for a registration, which you will get a `RenderMesh` with migrated material from your `LineStyle`.
-- `LineSegmentTransformSystem` : Make TRS for `RenderMesh` based on information in `LineSegment`. Move your line by changing `LineSegment`'s data before this system.
+- `LineSegmentRegistrationSystem` : Having both `LineSegment` and `LineStyle` on the same `Entity` will qualify for a registration, which you will get a `RenderMesh` with migrated material from your `LineStyle` plus other TRS components.
+- `LineSegmentTransformSystem` : Calculate TRS which would then turns into `LocalToWorld` then `RenderMesh` use it. Based on information in `LineSegment`. Move your line by changing `LineSegment`'s data before this system.
 
 ## Limitations + problems
 
-Please see [Issues](https://github.com/5argon/ECSLineRenderer/issues) section.
+Please see [Issues](https://github.com/5argon/ECSLineRenderer/issues) section. For instance, currently the billboard rotation is wrong. If anyone understand http://www.opengl-tutorial.org/intermediate-tutorials/billboards-particles/billboards/ you can send PR.. thanks.
 
 # This asset is sponsored by
 
-My own other (paid) assets... haha. Asides from code contribution, you could also provide support by getting something from these. Thank you.
+My other assets.. other than pull requests you can contribute by getting these. Thank you.
 
 - [Introloop](http://exceed7.com/introloop/) - Easily play looping music with intro section (without physically splitting them) (Unity 2017.0+)
 - [Native Audio](http://exceed7.com/native-audio/) - Lower audio latency via OS's native audio library. (Unity 2017.1+, iOS uses OpenAL / Android uses OpenSL ES)
-- [Native Touch](http://exceed7.com/native-touch/) - Faster touch via callbacks from the OS, with a real hardware timestamp. (Unity 2017.1+, iOS/Android)

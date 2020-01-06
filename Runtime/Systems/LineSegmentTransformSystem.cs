@@ -10,6 +10,7 @@ using UnityEngine.Jobs;
 namespace E7.ECS.LineRenderer
 {
     [ExecuteAlways]
+    [UpdateInGroup(typeof(LineRendererSimulationGroup))]
     public class LineSegmentTransformSystem : JobComponentSystem
     {
         EntityQuery lineSegmentQuery;
@@ -17,20 +18,12 @@ namespace E7.ECS.LineRenderer
 
         protected override void OnCreate()
         {
-            var lineSegmentQd = new EntityQueryDesc
-            {
-                All = new ComponentType[]{
-                    ComponentType.ReadOnly<LineSegment>(),
-                    ComponentType.ReadWrite<Translation>(),
-                    ComponentType.ReadWrite<Rotation>(),
-                    ComponentType.ReadWrite<NonUniformScale>(),
-                },
-                Any = new ComponentType[]{
-                },
-                None = new ComponentType[]{
-                },
-            };
-            lineSegmentQuery = GetEntityQuery(lineSegmentQd);
+            lineSegmentQuery = GetEntityQuery(
+                ComponentType.ReadOnly<LineSegment>(),
+                ComponentType.ReadWrite<Translation>(),
+                ComponentType.ReadWrite<Rotation>(),
+                ComponentType.ReadWrite<NonUniformScale>()
+            );
             billboardCameraQuery = GetEntityQuery(
                 ComponentType.ReadOnly<BillboardCamera>(),
                 ComponentType.ReadWrite<LocalToWorld>()
@@ -113,14 +106,19 @@ namespace E7.ECS.LineRenderer
 
                         var cameraRigid = math.RigidTransform(cameraTranslations[0].Value);
                         var cameraTranslation = cameraRigid.pos;
-                        var cameraRotation = cameraRigid.rot; //TODO : use this somehow?
+                        
+                        //TODO : use this somehow? Currently billboard is wrong.
+                        // If anyone understand http://www.opengl-tutorial.org/intermediate-tutorials/billboards-particles/billboards/
+                        // please tell me how to do this..
+                        var cameraRotation = cameraRigid.rot; 
 
                         float3 toCamera = math.normalize(cameraTranslation - seg.from);
 
                         //If forward and toCamera is collinear the cross product is 0
                         //and it will gives quaternion with tons of NaN
                         //So we rather do nothing if that is the case
-                        if ((seg.from.Equals(cameraTranslation) || math.cross(forwardUnit, toCamera).Equals(float3.zero)) == false)
+                        if ((seg.from.Equals(cameraTranslation) ||
+                             math.cross(forwardUnit, toCamera).Equals(float3.zero)) == false)
                         {
                             //This is wrong because it only taken account of the camera's position, not also its rotation.
                             rotation = quaternion.LookRotation(forwardUnit, toCamera);
@@ -128,9 +126,9 @@ namespace E7.ECS.LineRenderer
                         }
                     }
 
-                    trans[i] = new Translation { Value = seg.from };
-                    rots[i] = new Rotation { Value = rotation };
-                    scales[i] = new NonUniformScale { Value = math.float3(seg.lineWidth, 1, lineLength) };
+                    trans[i] = new Translation {Value = seg.from};
+                    rots[i] = new Rotation {Value = rotation};
+                    scales[i] = new NonUniformScale {Value = math.float3(seg.lineWidth, 1, lineLength)};
                 }
             }
         }

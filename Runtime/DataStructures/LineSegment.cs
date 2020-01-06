@@ -9,7 +9,8 @@ namespace E7.ECS.LineRenderer
 {
     /// <summary>
     /// This component is not intended to be a fully-fledged line, but rather a part of it.
-    /// A complete line consists of multiple segments of no-cap lines, joined with "corner segment" then end with "line cap". (No work done on those yet)
+    /// A complete line consists of multiple segments of no-cap lines,
+    /// joined with "corner segment" then end with "line cap". (No work done on those yet)
     /// </summary>
     [Serializable]
     public struct LineSegment : IComponentData

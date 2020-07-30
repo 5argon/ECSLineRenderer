@@ -21,16 +21,6 @@ namespace E7.ECS.LineRenderer
     {
 
         Mesh _lineMesh;
-        EntityQuery _query;
-
-        protected override void OnCreate ()
-        {
-            _query = GetEntityQuery(
-                ComponentType.ReadOnly<LineSegment>(),
-                ComponentType.ReadOnly<LineStyle>(),
-                ComponentType.Exclude<RenderMesh>()
-            );
-        }
 
         protected override void OnUpdate ()
 		{

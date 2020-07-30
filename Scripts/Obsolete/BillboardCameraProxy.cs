@@ -7,6 +7,7 @@ namespace E7.ECS.LineRenderer
     /// <summary>
     /// Line will rotate to face the first camera found with this proxy.
     /// </summary>
+    [System.Obsolete]
     [RequireComponent(typeof(CopyTransformFromGameObjectProxy))]
     [RequireComponent(typeof(LocalToWorldProxy))]
     public class BillboardCameraProxy : ComponentDataProxy<BillboardCamera> { }

@@ -24,6 +24,7 @@ SubShader {
             #pragma fragment frag
             #pragma target 2.0
             #pragma multi_compile_fog
+            #pragma multi_compile_instancing
 
             #include "UnityCG.cginc"
 
@@ -42,7 +43,9 @@ SubShader {
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
-			fixed4 _Color;
+            UNITY_INSTANCING_BUFFER_START(Props)
+                UNITY_DEFINE_INSTANCED_PROP(fixed4, _Color)
+            UNITY_INSTANCING_BUFFER_END(Props)
 
             v2f vert (appdata_t v)
             {
@@ -57,7 +60,7 @@ SubShader {
 
             fixed4 frag (v2f i) : SV_Target
             {
-                fixed4 col = tex2D(_MainTex, i.texcoord) * _Color;
+                fixed4 col = tex2D(_MainTex, i.texcoord) * UNITY_ACCESS_INSTANCED_PROP(Props, _Color);
                 UNITY_APPLY_FOG(i.fogCoord, col);
                 return col;
             }

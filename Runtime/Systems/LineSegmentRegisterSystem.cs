@@ -15,8 +15,7 @@ namespace E7.ECS.LineRenderer
     /// to TRS, then Unity Transform system put TRS to LTW, then you see the rendering.
     /// </summary>
     [ExecuteAlways]
-    [UpdateBefore(typeof(LineSegmentTransformSystem))]
-    [UpdateInGroup(typeof(LineRendererSimulationGroup))]
+    [UpdateInGroup(typeof(InitializationSystemGroup))]
     public class LineSegmentRegisterSystem : JobComponentSystem
     {
         struct RegisteredState : ISystemStateComponentData

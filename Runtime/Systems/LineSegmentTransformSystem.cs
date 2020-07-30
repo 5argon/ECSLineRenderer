@@ -10,7 +10,7 @@ using UnityEngine.Jobs;
 namespace E7.ECS.LineRenderer
 {
     [ExecuteAlways]
-    [UpdateInGroup(typeof(LineRendererSimulationGroup))]
+    [UpdateInGroup(typeof(PresentationSystemGroup))]
     public class LineSegmentTransformSystem : JobComponentSystem
     {
         EntityQuery lineSegmentQuery;

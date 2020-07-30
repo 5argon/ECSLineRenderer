@@ -1,5 +1,6 @@
-﻿using Unity.Collections;
-using Unity.Entities;
+﻿using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Collections;
 using Unity.Jobs;
 using Unity.Rendering;
 using Unity.Transforms;
@@ -16,81 +17,47 @@ namespace E7.ECS.LineRenderer
     /// </summary>
     [ExecuteAlways]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
-    public class LineSegmentRegisterSystem : JobComponentSystem
+    public class LineSegmentRegisterSystem : SystemBase
     {
-        struct RegisteredState : ISystemStateComponentData
-        {
-        }
 
         Mesh _lineMesh;
-        EntityQuery cleanUpQuery;
-        EntityQuery newRegisterQuery;
+        EntityQuery _query;
 
-        protected override void OnCreate()
+        protected override void OnCreate ()
         {
-            newRegisterQuery = GetEntityQuery(
+            _query = GetEntityQuery(
                 ComponentType.ReadOnly<LineSegment>(),
                 ComponentType.ReadOnly<LineStyle>(),
-                ComponentType.Exclude<RegisteredState>()
-            );
-
-            cleanUpQuery = GetEntityQuery(
-                ComponentType.Exclude<LineSegment>(),
-                ComponentType.Exclude<LineStyle>(),
-                ComponentType.ReadOnly<RegisteredState>()
+                ComponentType.Exclude<RenderMesh>()
             );
         }
 
-        protected override void OnStartRunning ()
-        {
-            if( _lineMesh==null )
-                _lineMesh = CreateMesh();
-        }
+        protected override void OnUpdate ()
+		{
+            if( _lineMesh==null ) _lineMesh = CreateMesh();
+			var bounds = _lineMesh.bounds;
+			AABB aabb = new AABB{ Center=bounds.center , Extents = bounds.extents };
+			EntityCommandBuffer ecb = new EntityCommandBuffer( Allocator.Temp );
 
-        protected override JobHandle OnUpdate ( JobHandle inputDeps )
-        {
-            //Migrate material on LineStyle to RenderMesh by chunks
-            using (var aca = newRegisterQuery.CreateArchetypeChunkArray(Allocator.TempJob))
-            {
-                if (aca.Length > 0)
-                {
-                    EntityCommandBuffer ecb = new EntityCommandBuffer(Allocator.Temp);
+			Entities
+				.WithName("add_components_job")
+				.WithoutBurst()
+				.WithNone<RenderMesh>()
+				.ForEach( ( in Entity entity , in LineStyle style , in LineSegment segment ) =>
+				{
+					ecb.AddSharedComponent( entity , new RenderMesh{
+						mesh		= _lineMesh ,
+						material	= style.material
+					});
+					ecb.AddComponent( entity , ComponentType.ReadWrite<LocalToWorld>() );
+					ecb.AddComponent( entity , ComponentType.ReadWrite<RenderBounds>() );
+					ecb.SetComponent( entity , new RenderBounds{ Value = aabb });
+					ecb.AddComponent( entity , ComponentType.ReadWrite<WorldRenderBounds>() );
+				}).Run();
 
-                    var lineStyleType = GetArchetypeChunkSharedComponentType<LineStyle>();
-
-                    for (int i = 0; i < aca.Length; i++)
-                    {
-                        ArchetypeChunk ac = aca[i];
-                        var lineStyle = ac.GetSharedComponentData<LineStyle>(lineStyleType, EntityManager);
-
-                        //Filter to narrow down chunk operation.
-                        newRegisterQuery.SetSharedComponentFilter(lineStyle);
-                        ecb.AddSharedComponent( newRegisterQuery , new RenderMesh{
-                            mesh = _lineMesh ,
-                            material = lineStyle.material
-                        });
-                    }
-
-                    ecb.Playback(EntityManager);
-                    newRegisterQuery.ResetFilter();
-                }
-            }
-
-            //Use EQ operation to prepare other components where they don't need initialization value.
-            EntityManager.AddComponent(newRegisterQuery, ComponentType.ReadOnly<Translation>());
-            EntityManager.AddComponent(newRegisterQuery, ComponentType.ReadOnly<Rotation>());
-            EntityManager.AddComponent(newRegisterQuery, ComponentType.ReadOnly<NonUniformScale>());
-            //Unity stopped adding LTW for us without GO conversion.
-            EntityManager.AddComponent(newRegisterQuery, ComponentType.ReadOnly<LocalToWorld>());
-
-            //This make them not registered again.
-            EntityManager.AddComponent(newRegisterQuery, ComponentType.ReadOnly<RegisteredState>());
-
-            //This is for clean up of system state component in the case the entity was destroyed.
-            EntityManager.RemoveComponent(cleanUpQuery, ComponentType.ReadOnly<RegisteredState>());
-            
-            return default;
-        }
+			ecb.Playback( EntityManager );
+			ecb.Dispose();
+		}
 
         static Mesh CreateMesh ()
 		{

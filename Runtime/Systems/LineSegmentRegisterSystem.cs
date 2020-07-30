@@ -22,6 +22,7 @@ namespace E7.ECS.LineRenderer
         {
         }
 
+        Mesh _lineMesh;
         EntityQuery cleanUpQuery;
         EntityQuery newRegisterQuery;
 
@@ -38,10 +39,15 @@ namespace E7.ECS.LineRenderer
                 ComponentType.Exclude<LineStyle>(),
                 ComponentType.ReadOnly<RegisteredState>()
             );
-            CreateMeshIfNotYet();
         }
 
-        protected override JobHandle OnUpdate(JobHandle inputDeps)
+        protected override void OnStartRunning ()
+        {
+            if( _lineMesh==null )
+                _lineMesh = CreateMesh();
+        }
+
+        protected override JobHandle OnUpdate ( JobHandle inputDeps )
         {
             //Migrate material on LineStyle to RenderMesh by chunks
             using (var aca = newRegisterQuery.CreateArchetypeChunkArray(Allocator.TempJob))
@@ -52,9 +58,6 @@ namespace E7.ECS.LineRenderer
 
                     var lineStyleType = GetArchetypeChunkSharedComponentType<LineStyle>();
 
-                    //TODO : This shouldn't be needed, but somehow the mesh became `null` in editor world??
-                    CreateMeshIfNotYet();
-
                     for (int i = 0; i < aca.Length; i++)
                     {
                         ArchetypeChunk ac = aca[i];
@@ -62,8 +65,10 @@ namespace E7.ECS.LineRenderer
 
                         //Filter to narrow down chunk operation.
                         newRegisterQuery.SetSharedComponentFilter(lineStyle);
-                        ecb.AddSharedComponent(newRegisterQuery,
-                            new RenderMesh {mesh = lineMesh, material = lineStyle.material});
+                        ecb.AddSharedComponent( newRegisterQuery , new RenderMesh{
+                            mesh = _lineMesh ,
+                            material = lineStyle.material
+                        });
                     }
 
                     ecb.Playback(EntityManager);
@@ -87,63 +92,16 @@ namespace E7.ECS.LineRenderer
             return default;
         }
 
-        /// <summary>
-        /// A rectangle we will always use for all lines.
-        /// </summary>
-        Mesh lineMesh;
+        static Mesh CreateMesh ()
+		{
+			var mesh = new Mesh();
+			mesh.name = "quad 1x1, pivot at bottom center";
+			mesh.vertices = new Vector3[4]{ new Vector3{ x=-0.5f } , new Vector3{ x=0.5f } , new Vector3{ x=-0.5f , z=1 } , new Vector3{ x=0.5f , z=1 } };
+			mesh.triangles = new int[6]{ 0 , 2 , 1 , 2 , 3 , 1 };
+			mesh.normals = new Vector3[4]{ -Vector3.forward , -Vector3.forward , -Vector3.forward , -Vector3.forward };
+			mesh.uv = new Vector2[4]{ new Vector2{ x=0 , y=0 } , new Vector2{ x=1 , y=0 } , new Vector2{ x=0 , y=1 } , new Vector2{ x=1 , y=1 } };
+			return mesh;
+		}
 
-        const float lineDefaultWidth = 1f;
-        const float lineDefaultWidthHalf = lineDefaultWidth / 2f;
-        const string lineMeshName = "ECSLineMesh";
-
-        private void CreateMeshIfNotYet()
-        {
-            if (lineMesh == null)
-            {
-                var mesh = new Mesh();
-                mesh.name = lineMeshName;
-
-                var vertices = new Vector3[4];
-
-                vertices[0] = new Vector3(-lineDefaultWidthHalf, 0, 0);
-                vertices[1] = new Vector3(lineDefaultWidthHalf, 0, 0);
-                vertices[2] = new Vector3(-lineDefaultWidthHalf, 0, 1);
-                vertices[3] = new Vector3(lineDefaultWidthHalf, 0, 1);
-
-                mesh.vertices = vertices;
-
-                var tri = new int[6];
-
-                tri[0] = 0;
-                tri[1] = 2;
-                tri[2] = 1;
-
-                tri[3] = 2;
-                tri[4] = 3;
-                tri[5] = 1;
-
-                mesh.triangles = tri;
-
-                var normals = new Vector3[4];
-
-                normals[0] = -Vector3.forward;
-                normals[1] = -Vector3.forward;
-                normals[2] = -Vector3.forward;
-                normals[3] = -Vector3.forward;
-
-                mesh.normals = normals;
-
-                var uv = new Vector2[4];
-
-                uv[0] = new Vector2(0, 0);
-                uv[1] = new Vector2(1, 0);
-                uv[2] = new Vector2(0, 1);
-                uv[3] = new Vector2(1, 1);
-
-                mesh.uv = uv;
-
-                lineMesh = mesh;
-            }
-        }
     }
 }

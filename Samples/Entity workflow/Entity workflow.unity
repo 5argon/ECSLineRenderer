@@ -121,6 +121,55 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &383076588
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 383076590}
+  - component: {fileID: 383076589}
+  m_Layer: 0
+  m_Name: spawner script (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &383076589
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 383076588}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ba0c5c5bd678414b9b4f87e58f7c6e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _material: {fileID: 2100000, guid: 9069b8ba7f43a4dffa02cfea63841504, type: 2}
+  _lineWidth: 0.2
+  _segments: 628
+  _worldScale: 301.11
+  _tauFactor: 14.21
+  _spherize: 0
+--- !u!4 &383076590
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 383076588}
+  m_LocalRotation: {x: -0.11735588, y: -0.13508178, z: 0.13751823, w: 0.97420186}
+  m_LocalPosition: {x: 9.03, y: -12.48, z: -13.08}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 2
+  m_LocalEulerAnglesHint: {x: -11.041, y: -17.52, z: 17.776001}
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -197,13 +246,44 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 519420028}
-  m_LocalRotation: {x: -0.10586554, y: -0.60460174, z: 0.07532602, w: 0.7858596}
-  m_LocalPosition: {x: 9.06, y: 2.82, z: -10.98}
+  m_LocalRotation: {x: 0.45904922, y: 0.18564147, z: -0.140937, w: 0.8572909}
+  m_LocalPosition: {x: -15.5, y: 102.8, z: -73.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
+  m_Father: {fileID: 1082180940}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 57.077003, y: 20.338001, z: -7.5290003}
+--- !u!1 &1082180939
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1082180940}
+  m_Layer: 0
+  m_Name: camera pivot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1082180940
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1082180939}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children:
+  - {fileID: 519420032}
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: -4.3190002, y: -75.688, z: 14.306001}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1187753314
 GameObject:
   m_ObjectHideFlags: 0
@@ -215,7 +295,7 @@ GameObject:
   - component: {fileID: 1187753315}
   - component: {fileID: 1187753316}
   m_Layer: 0
-  m_Name: spawner script
+  m_Name: spawner script (0)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -228,13 +308,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1187753314}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0.11735588, y: -0.13508178, z: 0.13751823, w: 0.97420186}
+  m_LocalPosition: {x: 13.6, y: 35.1, z: -13.3}
+  m_LocalScale: {x: 1.2353, y: 1.2353, z: 1.2353}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -11.041, y: -17.52, z: 17.776001}
 --- !u!114 &1187753316
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -247,5 +327,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ba0c5c5bd678414b9b4f87e58f7c6e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _material: {fileID: 2100000, guid: 9069b8ba7f43a4dffa02cfea63841504, type: 2}
+  _material: {fileID: 2100000, guid: c5ead89256d6d4e2cb29e3e747ecc99b, type: 2}
   _lineWidth: 0.2
+  _segments: 1000
+  _worldScale: 56.33
+  _tauFactor: 14.21
+  _spherize: 1

@@ -11,21 +11,18 @@ namespace E7.ECS.LineRenderer
     /// <summary>
     /// Any new <see cref="LineSegment"/> together with <see cref="LineStyle"/>
     /// get TRS, LTW, and <see cref="RenderMesh"/> so it is ready for rendering.
-    ///
-    /// <see cref="LineSegmentTransformSystem"/> will put data in <see cref="LineSegment"/>
-    /// to TRS, then Unity Transform system put TRS to LTW, then you see the rendering.
     /// </summary>
     [ExecuteAlways]
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public class LineSegmentRegisterSystem : SystemBase
     {
 
-        Mesh _lineMesh;
+        public Mesh lineMesh { get; private set; }
 
         protected override void OnUpdate ()
         {
-            if( _lineMesh==null ) _lineMesh = CreateMesh();
-            var bounds = _lineMesh.bounds;
+            if( lineMesh==null ) lineMesh = CreateMesh();
+            var bounds = lineMesh.bounds;
             AABB aabb = new AABB{ Center=bounds.center , Extents = bounds.extents };
             EntityCommandBuffer ecb = new EntityCommandBuffer( Allocator.Temp );
 
@@ -36,13 +33,18 @@ namespace E7.ECS.LineRenderer
                 .ForEach( ( in Entity entity , in LineStyle style , in LineSegment segment ) =>
                 {
                     ecb.AddSharedComponent( entity , new RenderMesh{
-                        mesh        = _lineMesh ,
+                        mesh        = lineMesh ,
                         material    = style.material
                     });
                     ecb.AddComponent( entity , ComponentType.ReadWrite<LocalToWorld>() );
                     ecb.AddComponent( entity , ComponentType.ReadWrite<RenderBounds>() );
-                    ecb.SetComponent( entity , new RenderBounds{ Value = aabb });
+                    ecb.SetComponent( entity , new RenderBounds{
+                        Value = aabb
+                    });
                     ecb.AddComponent( entity , ComponentType.ReadWrite<WorldRenderBounds>() );
+                    ecb.SetComponent( entity , new WorldRenderBounds{
+                        Value = AABB.Transform(LineSegmentTransformSystem.SimpleMatrix(segment) ,aabb)
+                    });
                 }).Run();
 
             ecb.Playback( EntityManager );

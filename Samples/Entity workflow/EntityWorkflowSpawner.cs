@@ -8,6 +8,10 @@ using Unity.Transforms;
 
 using E7.ECS.LineRenderer;
 
+/// <summary>
+/// Instantiates line entities in dedicated custom World.
+/// Sends line batch data manually to rendering api directly, giving great control over when and how lines are rendered
+/// </summary>
 public class EntityWorkflowSpawner : MonoBehaviour
 {
 
@@ -36,11 +40,10 @@ public class EntityWorkflowSpawner : MonoBehaviour
                 i:              i ,
                 segments:       _segments ,
                 worldScale:     _worldScale ,
+                matrix:         matrix ,
                 p0:             out var p0 ,
                 p1:             out var p1
             );
-            p0 = Mul( matrix , p0 );
-            p1 = Mul( matrix , p1 );
             if( _spherize )
             {
                 p0 = math.normalize(p0) * _worldScale;
@@ -177,11 +180,10 @@ public class EntityWorkflowSpawner : MonoBehaviour
                     i:              i ,
                     segments:       segments ,
                     worldScale:     worldScale ,
+                    matrix:         matrix ,
                     p0:             out var p0 ,
                     p1:             out var p1
                 );
-                p0 = Mul( matrix , p0 );
-                p1 = Mul( matrix , p1 );
                 if( spherize )
                 {
                     p0 = math.normalize(p0) * worldScale;
@@ -209,6 +211,7 @@ public class EntityWorkflowSpawner : MonoBehaviour
         in int i ,
         in int segments ,
         in float worldScale ,
+        in float4x4 matrix ,
         out float3 p0 ,
         out float3 p1
     )
@@ -217,13 +220,15 @@ public class EntityWorkflowSpawner : MonoBehaviour
         float theta_next = theta + theta_step;
         p0 = new float3{ x=math.cos(theta) , y=0 , z=math.sin(theta) } * (float)i/(float)segments * worldScale;
         p1 = new float3{ x=math.cos(theta_next) , y=0 , z=math.sin(theta_next) } * ((float)i+1f)/(float)segments * worldScale;
+        p0 = TransformPoint( matrix , p0 );
+        p1 = TransformPoint( matrix , p1 );
         theta += theta_step;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static float3 Mul ( float4x4 matrix , float3 f3 )
+    static float3 TransformPoint ( float4x4 matrix , float3 point )
     {
-        float4 f4 = math.mul( matrix , new float4(f3,1) );
+        float4 f4 = math.mul( matrix , new float4(point,1) );
         return new float3{ x=f4.x , y=f4.y , z=f4.z };
     }
 

@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Entities;
 using Unity.Collections;
 using Unity.Transforms;
+using Unity.Rendering;
 
 using E7.ECS.LineRenderer;
 
@@ -65,16 +66,6 @@ public class EntityWorkflowSpawner : MonoBehaviour
                 segment.lineWidth = _lineWidth;
                 command.SetComponentData( _entities[i] , segment );
             }
-
-            // update material:
-            {
-                int styleIndex = command.GetSharedComponentDataIndex<LineStyle>( _entities[0] );
-                var styles = new List<LineStyle>(1);
-                command.GetAllUniqueSharedComponentData<LineStyle>( styles );
-                var style = styles[styleIndex];
-                style.material = _material;
-                styles[styleIndex] = style;
-            }
         }
     }
     #endif
@@ -91,8 +82,7 @@ public class EntityWorkflowSpawner : MonoBehaviour
         {
             _world = new World($"{nameof(EntityWorkflowSpawner)} World");
             DefaultWorldInitialization.AddSystemsToRootLevelSystemGroups(
-                    _world ,
-                    typeof(LineSegmentRegisterSystem)
+                    _world
                 ,   typeof(LineSegmentTransformSystem)
             );
             ScriptBehaviourUpdateOrder.UpdatePlayerLoop( _world , UnityEngine.LowLevel.PlayerLoop.GetCurrentPlayerLoop() );
@@ -108,8 +98,6 @@ public class EntityWorkflowSpawner : MonoBehaviour
             matrix:     transform.localToWorldMatrix ,
             spherize:   _spherize
         );
-
-        _world.GetOrCreateSystem<LineSegmentRegisterSystem>().Update();// force processing now (fixes first Update error)
     }
 
     void Update ()
@@ -124,13 +112,11 @@ public class EntityWorkflowSpawner : MonoBehaviour
                 var ltr = command.GetComponentData<LocalToWorld>( _entities[i] );
                 matrices[ i ] = ltr.Value;
             }
-            var mesh = _world.GetExistingSystem<LineSegmentRegisterSystem>().lineMesh;
-            UnityEngine.Assertions.Assert.IsNotNull(mesh);
             Graphics.DrawMeshInstanced(
-                mesh ,
-                0 ,
-                _material ,
-                matrices
+                mesh:           LineSegmentRegisterSystem.lineMesh ,
+                submeshIndex:   0 ,
+                material:       _material ,
+                matrices:       matrices
             );
         }
     }
@@ -161,14 +147,10 @@ public class EntityWorkflowSpawner : MonoBehaviour
         
         var prefabArchetype = command.CreateArchetype(
                 typeof(LineSegment)
-            ,   typeof(LineStyle)
+            ,   typeof(LocalToWorld)
             ,   typeof(Prefab)
         );
         var prefab = command.CreateEntity( prefabArchetype );
-        command.SetSharedComponentData( prefab , new LineStyle{
-            material = material
-        } );
-
         var instances = command.Instantiate( prefab , segments , Allocator.Temp );
         {
             float theta = 0;

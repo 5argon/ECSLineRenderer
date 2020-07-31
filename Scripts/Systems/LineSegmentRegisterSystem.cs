@@ -16,12 +16,17 @@ namespace E7.ECS.LineRenderer
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public class LineSegmentRegisterSystem : SystemBase
     {
-
-        public Mesh lineMesh { get; private set; }
+        
+        static Mesh _lineMesh = null;
+        public static Mesh lineMesh {
+            get {
+                if( _lineMesh==null ) _lineMesh = CreateMesh();
+                return _lineMesh;
+            }
+        }
 
         protected override void OnUpdate ()
         {
-            if( lineMesh==null ) lineMesh = CreateMesh();
             var bounds = lineMesh.bounds;
             AABB aabb = new AABB{ Center=bounds.center , Extents = bounds.extents };
             EntityCommandBuffer ecb = new EntityCommandBuffer( Allocator.Temp );
@@ -42,9 +47,6 @@ namespace E7.ECS.LineRenderer
                         Value = aabb
                     });
                     ecb.AddComponent( entity , ComponentType.ReadWrite<WorldRenderBounds>() );
-                    ecb.SetComponent( entity , new WorldRenderBounds{
-                        Value = AABB.Transform(LineSegmentTransformSystem.SimpleMatrix(segment) ,aabb)
-                    });
                 }).Run();
 
             ecb.Playback( EntityManager );

@@ -45,14 +45,5 @@ namespace E7.ECS.LineRenderer
 			}
 		}
 
-        public static float4x4 SimpleMatrix ( LineSegment segment )
-        {
-            float3 lineVec = segment.to - segment.from;
-            var rot = quaternion.identity;
-            var pos = segment.from;
-            var scale = new float3{ x=segment.lineWidth , y=1f , z=math.length(lineVec) };
-            return float4x4.TRS( pos , rot , scale );
-        }
-
 	}
 }

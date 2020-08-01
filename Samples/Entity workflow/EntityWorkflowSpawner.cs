@@ -33,6 +33,9 @@ public class EntityWorkflowSpawner : MonoBehaviour
     {
         float4x4 matrix = transform.localToWorldMatrix;
         float theta = 0;
+        var col = _material!=null ? _material.color : Color.white;
+        col.a = math.max( col.a , 0.1f );
+        Gizmos.color = col;
         for( int i=0 ; i<_segments ; i++ )
         {
             GeneratePoints(

@@ -8,7 +8,8 @@ namespace E7.ECS.LineRenderer
 {
 	/// <summary>
 	/// Calculates <see cref="WorldRenderBounds" from <see cref="RenderBounds" and <see cref="LineSegment"/>.
-	/// Start this system when you need <see cref="WorldRenderBounds"/> but no other system calculates it and you still want to do a culling pass.
+	/// NOTE: Start this system when you need <see cref="WorldRenderBounds"/> but no other system calculates it and you still want to do a culling pass etc.
+	///       world.GetOrCreateSystem<LineSegmentWorldRenderBoundsSystem>().Update();
 	/// </summary>
 	[WorldSystemFilter(0)]
     [UpdateInGroup(typeof(InitializationSystemGroup))]

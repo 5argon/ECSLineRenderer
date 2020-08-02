@@ -17,17 +17,12 @@ namespace E7.ECS.LineRenderer
     public class LineSegmentRegisterSystem : SystemBase
     {
         
-        static Mesh _lineMesh = null;
-        public static Mesh lineMesh {
-            get {
-                if( _lineMesh==null ) _lineMesh = CreateMesh();
-                return _lineMesh;
-            }
-        }
+        public static Mesh lineMesh { get; private set; }
 
         protected override void OnUpdate ()
         {
-            var bounds = lineMesh.bounds;
+            var mesh = lineMesh;
+            var bounds = mesh.bounds;
             AABB aabb = new AABB{ Center=bounds.center , Extents = bounds.extents };
             EntityCommandBuffer ecb = new EntityCommandBuffer( Allocator.Temp );
 
@@ -38,7 +33,7 @@ namespace E7.ECS.LineRenderer
                 .ForEach( ( in Entity entity , in LineStyle style , in LineSegment segment ) =>
                 {
                     ecb.AddSharedComponent( entity , new RenderMesh{
-                        mesh        = lineMesh ,
+                        mesh        = mesh ,
                         material    = style.material
                     });
                     ecb.AddComponent( entity , ComponentType.ReadWrite<LocalToWorld>() );
@@ -53,15 +48,19 @@ namespace E7.ECS.LineRenderer
             ecb.Dispose();
         }
 
-        static Mesh CreateMesh ()
+
+        #if UNITY_EDITOR
+        [UnityEditor.InitializeOnLoadMethod]
+        #endif
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]
+        static void InitializeType ()
         {
-            var mesh = new Mesh();
-            mesh.name = "quad 1x1, pivot at bottom center";
-            mesh.vertices = new Vector3[4]{ new Vector3{ x=-0.5f } , new Vector3{ x=0.5f } , new Vector3{ x=-0.5f , z=1 } , new Vector3{ x=0.5f , z=1 } };
-            mesh.triangles = new int[6]{ 0 , 2 , 1 , 2 , 3 , 1 };
-            mesh.normals = new Vector3[4]{ -Vector3.forward , -Vector3.forward , -Vector3.forward , -Vector3.forward };
-            mesh.uv = new Vector2[4]{ new Vector2{ x=0 , y=0 } , new Vector2{ x=1 , y=0 } , new Vector2{ x=0 , y=1 } , new Vector2{ x=1 , y=1 } };
-            return mesh;
+            lineMesh = new Mesh();
+            lineMesh.name = "quad 1x1, pivot at bottom center";
+            lineMesh.vertices = new Vector3[4]{ new Vector3{ x=-0.5f } , new Vector3{ x=0.5f } , new Vector3{ x=-0.5f , z=1 } , new Vector3{ x=0.5f , z=1 } };
+            lineMesh.triangles = new int[6]{ 0 , 2 , 1 , 2 , 3 , 1 };
+            lineMesh.normals = new Vector3[4]{ -Vector3.forward , -Vector3.forward , -Vector3.forward , -Vector3.forward };
+            lineMesh.uv = new Vector2[4]{ new Vector2{ x=0 , y=0 } , new Vector2{ x=1 , y=0 } , new Vector2{ x=0 , y=1 } , new Vector2{ x=1 , y=1 } };
         }
 
     }

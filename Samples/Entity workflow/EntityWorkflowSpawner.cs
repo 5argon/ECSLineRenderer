@@ -8,6 +8,7 @@ using Unity.Transforms;
 using Unity.Rendering;
 
 using E7.ECS.LineRenderer;
+using MeshProvider = E7.ECS.LineRenderer.Internal.MeshProvider;
 
 /// <summary>
 /// Instantiates line entities in dedicated custom World.
@@ -116,7 +117,7 @@ public class EntityWorkflowSpawner : MonoBehaviour
                 matrices[ i ] = ltr.Value;
             }
             Graphics.DrawMeshInstanced(
-                mesh:           LineSegmentRegisterSystem.lineMesh ,
+                mesh:           MeshProvider.lineMesh ,
                 submeshIndex:   0 ,
                 material:       _material ,
                 matrices:       matrices

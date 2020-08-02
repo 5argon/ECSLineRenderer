@@ -37,7 +37,7 @@ namespace E7.ECS.LineRenderer
             _styles.Clear();
             command.GetAllUniqueSharedComponentData( _styles );
 
-            var mesh = LineSegmentRegisterSystem.lineMesh;
+            var mesh = Internal.MeshProvider.lineMesh;
 			int numStyles = _styles.Count;
             for( int i=0 ; i<numStyles ; i++ )
             {

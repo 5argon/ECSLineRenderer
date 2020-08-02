@@ -33,14 +33,15 @@ namespace E7.ECS.LineRenderer
         protected override void OnUpdate ()
         {
             var command = EntityManager;
-            var cmd = new EntityCommandBuffer( Allocator.Temp );
 
             _styles.Clear();
             command.GetAllUniqueSharedComponentData( _styles );
 
             var mesh = LineSegmentRegisterSystem.lineMesh;
-            foreach( var style in _styles )
+			int numStyles = _styles.Count;
+            for( int i=0 ; i<numStyles ; i++ )
             {
+				var style = _styles[i];
                 _query.SetSharedComponentFilter( style );
                 command.SetSharedComponentData( _query , new RenderMesh{
                     mesh        = mesh ,

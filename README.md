@@ -36,14 +36,14 @@ It generate 1 piece of a thin rectangle mesh that goes 1 unit in the Z axis. We 
 
 The line then need a material. So you specify that on `LineStyle` `ISharedComponentData`. Without **both** `LineSegment` and `LineStyle` my systems will not work on them.
 
-Finally all lines should be rotated to face the main camera in billboard rendering style. By attaching `BillboardCameraProxy`, the system will take this camera's transform into calculation. But currently I think the implementation is still incorrect it fails in many slanted camera angles.
+Finally all lines should be rotated to face the main camera in billboard rendering style. The system will find a "main camera" and take the camera's transform into calculation.
 
 ```
 // ECSLineRenderer
 
 LineSegment -> Transform + NonUniformScale
 LineStyle -> RenderMesh
-BillboardCameraProxy -> Rotation
+Main Camera -> Rotation
 
 // Unity's built-in TransformSystemGroup
 
@@ -75,10 +75,6 @@ EntityManager.AddSharedComponentData(e, new LineStyle { material = mat });
 
 - Line width is in Unity's standard grid unit.
 - If position from and to are the same the system will not update the line. (Stays at previous position)
-
-### GameObjectEntity support
-
-Attach `LineSegmentProxy` and `LineStyleProxy` which will in turn attach `GameObjectEntity`. You could then play with it in the scene/edit mode with hybrid ECS.
 
 ### GameObject Conversion / SubScene support
 

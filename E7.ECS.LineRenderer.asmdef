@@ -7,6 +7,7 @@
         "Unity.Entities.Hybrid",
         "Unity.Jobs",
         "Unity.Mathematics",
+		"Unity.Mathematics.Extensions",
         "Unity.Rendering.Hybrid",
         "Unity.Transforms",
         "Unity.Transforms.Hybrid"

@@ -23,7 +23,7 @@ namespace E7.ECS.LineRenderer
 					.ForEach( ( ref LocalToWorld ltr , in LineSegment segment ) =>
 					{
 						float3 lineVec = segment.to - segment.from;
-						var rot = quaternion.LookRotation( math.normalize(lineVec) , math.normalize(cameraPosition-segment.from) );
+						var rot = quaternion.LookRotationSafe( math.normalize(lineVec) , math.normalize(cameraPosition-segment.from) );
 						var pos = segment.from;
 						var scale = new float3{ x=segment.lineWidth , y=1f , z=math.length(lineVec) };
 						ltr.Value = float4x4.TRS( pos , rot , scale );
@@ -37,7 +37,7 @@ namespace E7.ECS.LineRenderer
 					.ForEach( ( ref LocalToWorld ltr , in LineSegment segment ) =>
 					{
 						float3 lineVec = segment.to - segment.from;
-						var rot = quaternion.LookRotation( math.normalize(lineVec) , math.mul(cameraRotation,new float3{z=-1}) );
+						var rot = quaternion.LookRotationSafe( math.normalize(lineVec) , math.mul(cameraRotation,new float3{z=-1}) );
 						var pos = segment.from;
 						var scale = new float3{ x=segment.lineWidth , y=1f , z=math.length(lineVec) };
 						ltr.Value = float4x4.TRS( pos , rot , scale );
